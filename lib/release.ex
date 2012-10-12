@@ -19,19 +19,30 @@ defmodule Relex.Release do
         []
       end
 
-      def rel do
-        rel(__MODULE__)
-      end
+      def rel, do: rel(__MODULE__)
+      def script(opts // []), do: script(__MODULE__, opts)
 
       def erts_version do
         list_to_binary(:erlang.system_info(:version))
       end
 
-      defoverridable basic_applications: 0, applications: 0, rel: 0, erts_version: 0
+      def code_path do
+        lc path inlist :code.get_path, do: list_to_binary(path)
+      end
+
+      defoverridable basic_applications: 0, applications: 0, rel: 0, erts_version: 0, code_path: 0
 
     end
   end
 
+  def script(release, options // []) do
+    path = File.join([options[:path] || File.cwd!, release.name, "releases", release.version])
+    File.mkdir_p! path
+    rel_file = File.join(path, "#{release.name}.rel")
+    File.write rel_file, :io_lib.format("~p.~n",[rel(release)])
+    code_path = lc path inlist release.code_path, do: to_char_list(path)
+    :systools.make_script(to_char_list(File.join(path, release.name)), [path: code_path, outdir: to_char_list(path)])
+  end
 
   def rel(release) do
     {:release, {to_char_list(release.name), to_char_list(release.version)},
