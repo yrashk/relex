@@ -15,7 +15,7 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
   def app(rec) do
     case rec do
       Relex.App[name: name, app: nil] ->
-        {:ok, [app]} = :file.consult(File.join([path(rec),"#{name}.app"]))
+        {:ok, [app]} = :file.consult(File.join([path(rec),"ebin","#{name}.app"]))
         app
       Relex.App[app: app] ->
         app
@@ -27,6 +27,7 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
       Relex.App[version: version, name: name,  path: nil] ->
         paths = lc path inlist :code.get_path, do: list_to_binary(path)
         paths = Enum.filter(paths, fn(p) -> File.exists?(File.join([p, "#{name}.app"])) end)
+        paths = lc path inlist paths, do: File.join(path, "..")
         case paths do
          [] -> raise NotFound, app: rec
          [path] -> path
