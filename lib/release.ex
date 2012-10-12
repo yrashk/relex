@@ -31,18 +31,38 @@ defmodule Relex.Release do
         lc path inlist :code.get_path, do: list_to_binary(path)
       end
 
-      defoverridable basic_applications: 0, applications: 0, rel: 0, erts_version: 0, code_path: 0
+      def root_dir do
+        list_to_binary(:code.root_dir)
+      end
+
+      defoverridable basic_applications: 0, applications: 0, rel: 0, erts_version: 0, code_path: 0, root_dir: 0
 
     end
   end
 
-  def bundle!(:applications, release, options // []) do
+  def bundle!(:erts, release, options) do
+    path = File.join([options[:path] || File.cwd!, release.name, "lib"])
+    erts_vsn = "erts-#{release.erts_version}"
+    erts = File.join(release.root_dir, erts_vsn)
+    unless File.exists?(erts) do
+     {:error, :erts_not_found}
+    else
+      target = File.join(path, erts_vsn)
+      File.mkdir_p!(target)
+      File.cp_r!(File.join(erts,"."), target)
+      fix_permissions!(erts, target)
+    end
+    :ok
+  end
+  def bundle!(:applications, release, options) do
     path = File.join([options[:path] || File.cwd!, release.name, "lib"])
     apps = apps(release)
     lc app inlist apps do
       target = File.join(path, "#{Relex.App.name(app)}-#{Relex.App.version(app)}")
       File.mkdir_p!(target)
-      File.cp_r!(File.join(Relex.App.path(app),"."), target)
+      path = Relex.App.path(app)
+      File.cp_r!(File.join(path,"."), target)
+      fix_permissions!(path, target)
     end
     :ok
   end
@@ -91,6 +111,17 @@ defmodule Relex.Release do
     deps = Relex.App.dependencies(app)
     deps = deps ++ (lc app inlist deps, do: deps(app))
     List.flatten(deps)
+  end
+
+  # workaround for File.cp_r! not respecting permissions
+  defp fix_permissions!(src, dst) do
+    src_split = File.split(src)
+    files = File.wildcard(File.join([src, "**", "**"]))
+    lc file inlist files do
+      stat = File.stat!(file)
+      rel_path = File.join(:lists.nthtail(length(src_split), File.split(file)))
+      File.write_stat!(File.join([dst, rel_path]), stat)
+    end
   end
 
 end
