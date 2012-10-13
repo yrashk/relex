@@ -44,11 +44,14 @@ defmodule Relex.Release do
         list_to_binary(:code.root_dir)
       end
 
+      def include_application?(_), do: true
+
       def after_bundle(opts) do
         Relex.Helper.MinimalStarter.render(__MODULE__, opts)
       end
 
       defoverridable basic_applications: 0, applications: 0, rel: 0, erts_version: 0, code_path: 0, root_dir: 0,
+                     include_application?: 1,
                      after_bundle: 1
 
     end
@@ -109,6 +112,7 @@ defmodule Relex.Release do
     apps = lc req inlist requirements, do: Relex.App.new(req)
     deps = List.flatten(lc app inlist apps, do: deps(app))
     apps = List.uniq(apps ++ deps)
+    apps = 
     Dict.values(Enum.reduce apps, HashDict.new, 
                 fn(app, acc) ->
                   name = Relex.App.name(app)
@@ -123,6 +127,7 @@ defmodule Relex.Release do
                     Dict.put(acc, name, app)
                   end
                 end)
+    Enum.filter apps, fn(app) -> release.include_application?(Relex.App.name(app)) end
   end
 
   defp deps(app) do
