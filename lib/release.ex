@@ -23,6 +23,12 @@ defmodule Relex.Release do
       def write_script!(opts // []), do: write_script!(__MODULE__, opts)
       def bundle!(kind, opts // []), do: bundle!(kind, __MODULE__, opts)
 
+      def make!(opts // []) do
+        __MODULE__.write_script!(opts)
+        __MODULE__.bundle!(:applications, opts)
+        __MODULE__.bundle!(:erts, opts)
+      end
+
       def erts_version do
         list_to_binary(:erlang.system_info(:version))
       end
@@ -67,7 +73,7 @@ defmodule Relex.Release do
     :ok
   end
 
-  def write_script!(release, options // []) do
+  def write_script!(release, options) do
     path = File.join([options[:path] || File.cwd!, release.name, "releases", release.version])
     File.mkdir_p! path
     rel_file = File.join(path, "#{release.name}.rel")
