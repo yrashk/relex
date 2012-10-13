@@ -29,6 +29,7 @@ defmodule Relex.Release do
         __MODULE__.write_script!(opts)
         __MODULE__.bundle!(:applications, opts)
         __MODULE__.bundle!(:erts, opts)
+        __MODULE__.after_bundle(opts)
       end
 
       def erts_version do
@@ -43,7 +44,12 @@ defmodule Relex.Release do
         list_to_binary(:code.root_dir)
       end
 
-      defoverridable basic_applications: 0, applications: 0, rel: 0, erts_version: 0, code_path: 0, root_dir: 0
+      def after_bundle(opts) do
+        Relex.Helper.MinimalStarter.render(__MODULE__, opts)
+      end
+
+      defoverridable basic_applications: 0, applications: 0, rel: 0, erts_version: 0, code_path: 0, root_dir: 0,
+                     after_bundle: 1
 
     end
   end
