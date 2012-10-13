@@ -17,9 +17,9 @@ defmodule Relex.Release do
       def bundle!(kind, opts // []), do: bundle!(kind, __MODULE__, opts)
 
       def make!(opts // []) do
-        write_script!(opts)
         bundle!(:applications, opts)
         if include_erts?(opts), do: bundle!(:erts, opts)
+        write_script!(opts)        
         after_bundle(opts)
       end
 
@@ -48,6 +48,16 @@ defmodule Relex.Release do
 
       defcallback include_application?(app), do: true
 
+      defcallback include_erts_file?(file) do
+        regexes = [%r(^bin/.+), %r(^lib/.+), %r(^include/.+), %r(^info$)]        
+        Enum.any?(regexes, Regex.match?(&1, file))
+      end
+
+      defcallback include_app_file?(file) do
+        regexes = [%r(^ebin/.*), %r(^priv/.+), %r(^include/.+)]
+        Enum.any?(regexes, Regex.match?(&1, file))
+      end
+
       defcallback include_erts?, do: true
 
       def after_bundle(opts) do
@@ -63,30 +73,31 @@ defmodule Relex.Release do
   def bundle!(:erts, release, options) do
     path = File.join([options[:path] || File.cwd!, release.name(options), "lib"])
     erts_vsn = "erts-#{release.erts_version(options)}"
-    erts = File.join(release.root_dir(options), erts_vsn)
-    unless File.exists?(erts) do
+    src = File.join(release.root_dir(options), erts_vsn)
+    unless File.exists?(src) do
      {:error, :erts_not_found}
     else
       target = File.join(path, erts_vsn)
-      File.mkdir_p!(target)
-      File.cp_r!(File.join(erts,"."), target)
-      fix_permissions!(erts, target)
+      files = Enum.filter(File.wildcard(File.join([src, "**", "**"])),
+                          fn(file) -> 
+                            release.include_erts_file?(options, Relex.Files.relative_path(src, file)) 
+                          end)
+      Relex.Files.copy(files, src, target)
     end
     :ok
   end
   def bundle!(:applications, release, options) do
     path = File.expand_path(File.join([options[:path] || File.cwd!, release.name(options), "lib"]))
     apps = apps(release, options)
-    lc app inlist apps do
-      source = File.expand_path(Relex.App.path(app))
-      source_len = byte_size(source)
-      if match?(<<^source :: [binary, size(source_len)], _ :: binary>>, path) do
-        raise Relex.Error, message: "Can't create the release inside #{Relex.App.name(app)} application (#{source})"
-      end
+    apps_files = lc app inlist apps do
+      src = File.expand_path(Relex.App.path(app))
+      files = Enum.filter(File.wildcard(File.join([src, "**", "**"])),
+                         fn(file) -> release.include_app_file?(options, Relex.Files.relative_path(src, file)) end)
+      {app, src, files}
+    end
+    lc {app, src, files} inlist apps_files do
       target = File.join(path, "#{Relex.App.name(app)}-#{Relex.App.version(app)}")
-      File.mkdir_p!(target)
-      File.cp_r!(File.join(source,"."), target)
-      fix_permissions!(source, target)
+      Relex.Files.copy(files, src, target)
     end
     :ok
   end
@@ -137,17 +148,6 @@ defmodule Relex.Release do
     deps = Relex.App.dependencies(app)
     deps = deps ++ (lc app inlist deps, do: deps(app))
     List.flatten(deps)
-  end
-
-  # workaround for File.cp_r! not respecting permissions
-  defp fix_permissions!(src, dst) do
-    src_split = File.split(src)
-    files = File.wildcard(File.join([src, "**", "**"]))
-    lc file inlist files do
-      stat = File.stat!(file)
-      rel_path = File.join(:lists.nthtail(length(src_split), File.split(file)))
-      File.write_stat!(File.join([dst, rel_path]), stat)
-    end
   end
 
   defmacro defcallback({callback_name, _, args}, opts) do
