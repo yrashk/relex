@@ -17,10 +17,10 @@ defmodule Relex.Release do
       def bundle!(kind, opts // []), do: bundle!(kind, __MODULE__, opts)
 
       def make!(opts // []) do
-        __MODULE__.write_script!(opts)
-        __MODULE__.bundle!(:applications, opts)
-        __MODULE__.bundle!(:erts, opts)
-        __MODULE__.after_bundle(opts)
+        write_script!(opts)
+        bundle!(:applications, opts)
+        bundle!(:erts, opts)
+        after_bundle(opts)
       end
 
       def name(_), do: name
