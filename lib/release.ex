@@ -46,13 +46,13 @@ defmodule Relex.Release do
         list_to_binary(:code.root_dir)
       end
 
-      def include_application?(_), do: true
+      defcallback include_application?(app), do: true
 
       def after_bundle(opts) do
         Relex.Helper.MinimalStarter.render(__MODULE__, opts)
       end
 
-      defoverridable name: 1, version: 1, include_application?: 1,
+      defoverridable name: 1, version: 1,
                      after_bundle: 1
 
     end
@@ -128,7 +128,7 @@ defmodule Relex.Release do
                     Dict.put(acc, name, app)
                   end
                 end)
-    Enum.filter apps, fn(app) -> release.include_application?(Relex.App.name(app)) end
+    Enum.filter apps, fn(app) -> release.include_application?(options, Relex.App.name(app)) end
   end
 
   defp deps(app) do
@@ -148,11 +148,17 @@ defmodule Relex.Release do
     end
   end
 
-  defmacro defcallback({callback_name, _, _} = name, opts) do
+  defmacro defcallback({callback_name, _, args}, opts) do
+    if is_atom(args), do: args = []
+    full_args = [(quote do: _)|args]
+    sz = length(args)
     quote do
-      def unquote(callback_name)(_), do: unquote(name)
-      def unquote(callback_name)(), unquote(opts)
-      defoverridable [{unquote(callback_name), 0}, {unquote(callback_name), 1}]
+      def unquote(callback_name)(unquote_splicing(full_args)) do
+        unquote(callback_name)(unquote_splicing(args))
+      end
+      def unquote(callback_name)(unquote_splicing(args)), unquote(opts)
+      defoverridable [{unquote(callback_name), unquote(sz)}, 
+                      {unquote(callback_name), unquote(sz+1)}]
     end
   end
 
