@@ -9,7 +9,7 @@ defmodule Relex.Mixfile do
 
   # Configuration for the OTP application
   def application do
-    [description: 'Release generator', registered: []]
+    [description: 'Release assembler', registered: []]
   end
 
   defp deps do
