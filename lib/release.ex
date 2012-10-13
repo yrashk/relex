@@ -60,6 +60,8 @@ defmodule Relex.Release do
 
       defcallback include_erts?, do: true
 
+      defcallback default_release?, do: true
+
       def after_bundle(opts) do
         Relex.Helper.MinimalStarter.render(__MODULE__, opts)
       end
@@ -109,6 +111,14 @@ defmodule Relex.Release do
     File.write rel_file, :io_lib.format("~p.~n",[rel(release, options)])
     code_path = lc path inlist release.code_path, do: to_char_list(path)
     :systools.make_script(to_char_list(File.join(path, release.name(options))), [path: code_path, outdir: to_char_list(path)])
+    if release.default_release?(options) and release.include_erts?(options) do
+      lib_path = File.join([options[:path] || File.cwd!, release.name(options), "lib"])
+      boot_file = "#{release.name(options)}.boot"
+      boot = File.join([path, boot_file])
+      erts_vsn = "erts-#{release.erts_version(options)}"      
+      target = File.join([lib_path, erts_vsn, "bin"])
+      File.cp!(boot, File.join([target, "start.boot"]))
+    end
   end
 
   def rel(release, options) do
