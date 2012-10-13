@@ -1,3 +1,5 @@
+defexception Relex.Error, message: nil
+
 defmodule Relex.Release do
   defmodule Behaviour do
     use Behaviour
@@ -61,12 +63,16 @@ defmodule Relex.Release do
     :ok
   end
   def bundle!(:applications, release, options) do
-    path = File.join([options[:path] || File.cwd!, release.name, "lib"])
+    path = File.expand_path(File.join([options[:path] || File.cwd!, release.name, "lib"]))
     apps = apps(release)
     lc app inlist apps do
+      source = File.expand_path(Relex.App.path(app))
+      source_len = byte_size(source)
+      if match?(<<^source :: [binary, size(source_len)], _ :: binary>>, path) do
+        raise Relex.Error, message: "Can't create the release inside #{Relex.App.name(app)} application (#{source})"
+      end
       target = File.join(path, "#{Relex.App.name(app)}-#{Relex.App.version(app)}")
       File.mkdir_p!(target)
-      source = Relex.App.path(app)
       File.cp_r!(File.join(source,"."), target)
       fix_permissions!(source, target)
     end
