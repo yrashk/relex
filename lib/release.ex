@@ -13,15 +13,6 @@ defmodule Relex.Release do
       import Relex.Release
       @behaviour Relex.Release.Behaviour
 
-      def basic_applications do
-        [:kernel, :stdlib, :sasl]
-      end
-
-      def applications do
-        []
-      end
-
-      def rel, do: rel(__MODULE__)
       def write_script!(opts // []), do: write_script!(__MODULE__, opts)
       def bundle!(kind, opts // []), do: bundle!(kind, __MODULE__, opts)
 
@@ -32,15 +23,26 @@ defmodule Relex.Release do
         __MODULE__.after_bundle(opts)
       end
 
-      def erts_version do
+      def name(_), do: name
+      def version(_), do: version
+
+      defcallback basic_applications do
+        [:kernel, :stdlib, :sasl]
+      end
+
+      defcallback applications do
+        []
+      end
+
+      defcallback erts_version do
         list_to_binary(:erlang.system_info(:version))
       end
 
-      def code_path do
+      defcallback code_path do
         lc path inlist :code.get_path, do: list_to_binary(path)
       end
 
-      def root_dir do
+      defcallback root_dir do
         list_to_binary(:code.root_dir)
       end
 
@@ -50,17 +52,16 @@ defmodule Relex.Release do
         Relex.Helper.MinimalStarter.render(__MODULE__, opts)
       end
 
-      defoverridable basic_applications: 0, applications: 0, rel: 0, erts_version: 0, code_path: 0, root_dir: 0,
-                     include_application?: 1,
+      defoverridable name: 1, version: 1, include_application?: 1,
                      after_bundle: 1
 
     end
   end
 
   def bundle!(:erts, release, options) do
-    path = File.join([options[:path] || File.cwd!, release.name, "lib"])
-    erts_vsn = "erts-#{release.erts_version}"
-    erts = File.join(release.root_dir, erts_vsn)
+    path = File.join([options[:path] || File.cwd!, release.name(options), "lib"])
+    erts_vsn = "erts-#{release.erts_version(options)}"
+    erts = File.join(release.root_dir(options), erts_vsn)
     unless File.exists?(erts) do
      {:error, :erts_not_found}
     else
@@ -72,8 +73,8 @@ defmodule Relex.Release do
     :ok
   end
   def bundle!(:applications, release, options) do
-    path = File.expand_path(File.join([options[:path] || File.cwd!, release.name, "lib"]))
-    apps = apps(release)
+    path = File.expand_path(File.join([options[:path] || File.cwd!, release.name(options), "lib"]))
+    apps = apps(release, options)
     lc app inlist apps do
       source = File.expand_path(Relex.App.path(app))
       source_len = byte_size(source)
@@ -89,26 +90,26 @@ defmodule Relex.Release do
   end
 
   def write_script!(release, options) do
-    path = File.join([options[:path] || File.cwd!, release.name, "releases", release.version])
+    path = File.join([options[:path] || File.cwd!, release.name(options), "releases", release.version(options)])
     File.mkdir_p! path
-    rel_file = File.join(path, "#{release.name}.rel")
-    File.write rel_file, :io_lib.format("~p.~n",[rel(release)])
+    rel_file = File.join(path, "#{release.name(options)}.rel")
+    File.write rel_file, :io_lib.format("~p.~n",[rel(release, options)])
     code_path = lc path inlist release.code_path, do: to_char_list(path)
-    :systools.make_script(to_char_list(File.join(path, release.name)), [path: code_path, outdir: to_char_list(path)])
+    :systools.make_script(to_char_list(File.join(path, release.name(options))), [path: code_path, outdir: to_char_list(path)])
   end
 
-  def rel(release) do
-    {:release, {to_char_list(release.name), to_char_list(release.version)},
-               {:erts, to_char_list(release.erts_version)},
-               (lc app inlist apps(release) do
+  def rel(release, options) do
+    {:release, {to_char_list(release.name(options)), to_char_list(release.version(options))},
+               {:erts, to_char_list(release.erts_version(options))},
+               (lc app inlist apps(release, options) do
                   {Relex.App.name(app), Relex.App.version(app), 
                    Relex.App.type(app), 
                    lc inc_app inlist Relex.App.included_applications(app), do: Relex.App.name(inc_app)}
                end)}
   end
 
-  defp apps(release) do
-    requirements = release.basic_applications ++ release.applications
+  defp apps(release, options) do
+    requirements = release.basic_applications(options) ++ release.applications(options)
     apps = lc req inlist requirements, do: Relex.App.new(req)
     deps = List.flatten(lc app inlist apps, do: deps(app))
     apps = List.uniq(apps ++ deps)
@@ -144,6 +145,14 @@ defmodule Relex.Release do
       stat = File.stat!(file)
       rel_path = File.join(:lists.nthtail(length(src_split), File.split(file)))
       File.write_stat!(File.join([dst, rel_path]), stat)
+    end
+  end
+
+  defmacro defcallback({callback_name, _, _} = name, opts) do
+    quote do
+      def unquote(callback_name)(_), do: unquote(name)
+      def unquote(callback_name)(), unquote(opts)
+      defoverridable [{unquote(callback_name), 0}, {unquote(callback_name), 1}]
     end
   end
 
