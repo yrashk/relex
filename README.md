@@ -1,6 +1,6 @@
-# Relex — Release generator
+# Relex — Release assembler
 
-Relex is a simplistic generator for Erlang releases in Elixir.
+Relex is a simplistic assembler for Erlang releases in Elixir.
 
 In order to define a release, this is your start point:
 
