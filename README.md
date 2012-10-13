@@ -15,4 +15,6 @@ defmodule MyApp.Release do
 end
 ```
 
+See Relex.Release file for more callbacks
+
 After having this module compiled, run `MyApp.Release.make! path: "/output/dir"` (path is optional)
