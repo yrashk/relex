@@ -66,9 +66,9 @@ defmodule Relex.Release do
     lc app inlist apps do
       target = File.join(path, "#{Relex.App.name(app)}-#{Relex.App.version(app)}")
       File.mkdir_p!(target)
-      path = Relex.App.path(app)
-      File.cp_r!(File.join(path,"."), target)
-      fix_permissions!(path, target)
+      source = Relex.App.path(app)
+      File.cp_r!(File.join(source,"."), target)
+      fix_permissions!(source, target)
     end
     :ok
   end
