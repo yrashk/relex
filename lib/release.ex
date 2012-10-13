@@ -19,7 +19,7 @@ defmodule Relex.Release do
       def make!(opts // []) do
         write_script!(opts)
         bundle!(:applications, opts)
-        bundle!(:erts, opts)
+        if include_erts?(opts), do: bundle!(:erts, opts)
         after_bundle(opts)
       end
 
@@ -47,6 +47,8 @@ defmodule Relex.Release do
       end
 
       defcallback include_application?(app), do: true
+
+      defcallback include_erts?, do: true
 
       def after_bundle(opts) do
         Relex.Helper.MinimalStarter.render(__MODULE__, opts)
