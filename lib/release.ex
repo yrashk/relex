@@ -159,7 +159,7 @@ defmodule Relex.Release do
       By default, it's bin/*, lib/*, include/* and info
       """
       defcallback include_erts_file?(file) do
-        regexes = [%r(^bin/.+), %r(^lib/.+), %r(^include/.+), %r(^info$)]        
+        regexes = [%r"^bin(/.+)?$", %r"^lib(/.+)?$", %r"^include(/.+)?$", %r(^info$)]        
         Enum.any?(regexes, Regex.match?(&1, file))
       end
 
@@ -169,7 +169,7 @@ defmodule Relex.Release do
       By default, it's ebin/*, priv/* and include/*
       """
       defcallback include_app_file?(file) do
-        regexes = [%r(^ebin/.*), %r(^priv/.+), %r(^include/.+)]
+        regexes = [%r"^ebin(/.+)?$", %r"^priv(/.+)?$", %r"^include(/.+)?$"]
         Enum.any?(regexes, Regex.match?(&1, file))
       end
 
@@ -207,10 +207,10 @@ defmodule Relex.Release do
      {:error, :erts_not_found}
     else
       target = File.join(path, erts_vsn)
-      files = Enum.filter(File.wildcard(File.join([src, "**", "**"])),
-                          fn(file) -> 
-                            release.include_erts_file?(options, Relex.Files.relative_path(src, file)) 
-                          end)
+      files = Relex.Files.files(src,
+                                fn(file) -> 
+                                  release.include_erts_file?(options, Relex.Files.relative_path(src, file)) 
+                                end)
       Relex.Files.copy(files, src, target)
       if release.relocatable?(options) do
         templates = File.wildcard(File.join([target, "bin", "*.src"]))
@@ -231,8 +231,10 @@ defmodule Relex.Release do
     apps = apps(release, options)
     apps_files = lc app inlist apps do
       src = File.expand_path(Relex.App.path(app))
-      files = Enum.filter(File.wildcard(File.join([src, "**", "**"])),
-                         fn(file) -> release.include_app_file?(options, Relex.Files.relative_path(src, file)) end)
+      files = Relex.Files.files(src,
+                                fn(file) -> 
+                                  release.include_app_file?(options, Relex.Files.relative_path(src, file)) 
+                                end)
       {app, src, files}
     end
     lc {app, src, files} inlist apps_files do

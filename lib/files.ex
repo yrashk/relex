@@ -1,5 +1,19 @@
 defmodule Relex.Files do
 
+  alias :file, as: F
+
+  def files(directory, cb) do
+    case F.list_dir(directory) do
+      {:ok, files} ->
+        files = lc file inlist files, do: File.join(directory, to_binary(file))
+        files = Enum.filter(files, cb.(&1))
+        directories = Enum.filter(files, File.dir?(&1))
+        files = files -- directories
+        files ++ List.flatten(lc dir inlist directories, do: files(dir, cb))
+      other -> other
+    end
+  end
+
   def copy(files, src, dest) when is_list(files) do
     File.mkdir_p!(dest)
     copy_files(files, src, dest)
