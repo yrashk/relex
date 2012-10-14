@@ -17,4 +17,4 @@ end
 
 See Relex.Release file for more callbacks
 
-After having this module compiled, run `MyApp.Release.make! path: "/output/dir"` (path is optional)
+After having this module compiled, run `MyApp.Release.assemble! path: "/output/dir"` (path is optional)

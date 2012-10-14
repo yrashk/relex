@@ -16,7 +16,7 @@ defmodule Relex.Release do
       def write_script!(opts // []), do: write_script!(__MODULE__, opts)
       def bundle!(kind, opts // []), do: bundle!(kind, __MODULE__, opts)
 
-      def make!(opts // []) do
+      def assemble!(opts // []) do
         bundle!(:applications, opts)
         if include_erts?(opts), do: bundle!(:erts, opts)
         write_script!(opts)        
