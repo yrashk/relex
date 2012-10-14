@@ -70,6 +70,8 @@ defmodule Relex.Release do
 
       defcallback default_release?, do: true
 
+      defcallback relocatable?, do: true
+
       def after_bundle(opts) do
         Relex.Helper.MinimalStarter.render(__MODULE__, opts)
       end
@@ -81,7 +83,7 @@ defmodule Relex.Release do
   end
 
   def bundle!(:erts, release, options) do
-    path = File.join([options[:path] || File.cwd!, release.name(options), "lib"])
+    path = File.join([options[:path] || File.cwd!, release.name(options)])
     erts_vsn = "erts-#{release.erts_version(options)}"
     src = File.join(release.root_dir(options), erts_vsn)
     unless File.exists?(src) do
@@ -93,6 +95,17 @@ defmodule Relex.Release do
                             release.include_erts_file?(options, Relex.Files.relative_path(src, file)) 
                           end)
       Relex.Files.copy(files, src, target)
+      if release.relocatable?(options) do
+        templates = File.wildcard(File.join([target, "bin", "*.src"]))
+        lc template inlist templates do 
+          content = File.read!(template)
+          new_content = String.replace(content, "%FINAL_ROOTDIR%", "$(cd ${0%/*} && pwd)/../..", global: true)
+          new_file = File.join([target, "bin", File.basename(template, ".src")])
+          File.write!(new_file, new_content)
+          stat = File.stat!(template)
+          File.write_stat!(new_file, File.Stat.mode(493, stat))
+        end
+      end
     end
     :ok
   end
@@ -120,7 +133,7 @@ defmodule Relex.Release do
     code_path = lc path inlist release.code_path(options), do: to_char_list(path)
     :systools.make_script(to_char_list(File.join(path, release.name(options))), [path: code_path, outdir: to_char_list(path)])
     if release.default_release?(options) and release.include_erts?(options) do
-      lib_path = File.join([options[:path] || File.cwd!, release.name(options), "lib"])
+      lib_path = File.join([options[:path] || File.cwd!, release.name(options)])
       boot_file = "#{release.name(options)}.boot"
       boot = File.join([path, boot_file])
       erts_vsn = "erts-#{release.erts_version(options)}"      

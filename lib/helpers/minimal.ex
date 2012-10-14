@@ -5,7 +5,7 @@ defmodule Relex.Helper.MinimalStarter do
       path = File.expand_path(opts[:path] || File.cwd!)
       script_path = File.join([path, release.name, "bin", "start"])
       File.mkdir_p! File.dirname(script_path)
-      File.write script_path, template(path: path, release: release)
+      File.write script_path, template(release: release, options: opts)
       stat = File.stat! script_path
       File.write_stat! script_path, File.Stat.mode(493, stat)
       if release.default_release?(opts) do
@@ -21,15 +21,17 @@ defmodule Relex.Helper.MinimalStarter do
   require EEx  
   EEx.function_from_string :defp, :template, 
   %b|#! /bin/sh
-SELF=$(cd ${0%/*} && pwd)
-cd $SELF/..
-DIR="`pwd`"
-ERTS=$DIR/lib/erts-<%= @release.erts_version %>
+DIR=$(cd ${0%/*} && pwd)/..
+ERTS=$DIR/erts-<%= @release.erts_version %>
+<%= if @release.relocatable?(@options) do %>
+$ERTS/bin/erl
+<% else %>
 BINDIR=$ERTS/bin 
 ROOTDIR=$DIR
 export BINDIR
 export ROOTDIR
 $ERTS/bin/erlexec
+<% end %>
 |, [:assigns]
 
 end
