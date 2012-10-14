@@ -1,5 +1,3 @@
-defexception Relex.Error, message: nil
-
 defmodule Relex.Release do
   defmodule Behaviour do
     use Behaviour
