@@ -54,7 +54,7 @@ defmodule Relex.Release do
           def name(config), do: config[:release_name]
       """
 
-      def write_script!(opts // []), do: write_script!(__MODULE__, opts)
+      def write_script!(apps, opts // []), do: write_script!(__MODULE__, apps, opts)
       def bundle!(kind, opts // []), do: bundle!(kind, __MODULE__, opts)
 
       @doc """
@@ -65,9 +65,9 @@ defmodule Relex.Release do
       * path: path where the repository will be created, by default File.cwd!
       """
       def assemble!(opts // []) do
-        bundle!(:applications, opts)
+        apps = bundle!(:applications, opts)
         if include_erts?(opts), do: bundle!(:erts, opts)
-        write_script!(opts)        
+        write_script!(apps, opts)        
         after_bundle(opts)
       end
 
@@ -241,14 +241,14 @@ defmodule Relex.Release do
       target = File.join(path, "#{Relex.App.name(app)}-#{Relex.App.version(app)}")
       Relex.Files.copy(files, src, target)
     end
-    :ok
+    apps
   end
 
-  def write_script!(release, options) do
+  def write_script!(release, apps, options) do
     path = File.join([options[:path] || File.cwd!, release.name(options), "releases", release.version(options)])
     File.mkdir_p! path
     rel_file = File.join(path, "#{release.name(options)}.rel")
-    File.write rel_file, :io_lib.format("~p.~n",[rel(release, options)])
+    File.write rel_file, :io_lib.format("~p.~n",[rel(release, apps, options)])
     code_path = lc path inlist release.code_path(options), do: to_char_list(path)
     :systools.make_script(to_char_list(File.join(path, release.name(options))), [path: code_path, outdir: to_char_list(path)])
     if release.default_release?(options) and release.include_erts?(options) do
@@ -261,10 +261,10 @@ defmodule Relex.Release do
     end
   end
 
-  def rel(release, options) do
+  def rel(release, apps, options) do
     {:release, {to_char_list(release.name(options)), to_char_list(release.version(options))},
                {:erts, to_char_list(release.erts_version(options))},
-               (lc app inlist apps(release, options) do
+               (lc app inlist apps do
                   {Relex.App.name(app), Relex.App.version(app), 
                    Relex.App.type(app), 
                    lc inc_app inlist Relex.App.included_applications(app), do: Relex.App.name(inc_app)}
