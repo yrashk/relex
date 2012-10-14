@@ -1,4 +1,4 @@
-defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :permanent do
+defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :permanent, code_path: [] do
 
   defexception NotFound, app: nil do
     def message(exc), do: "Application #{inspect app(exc)} not found"
@@ -24,8 +24,8 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
 
   def path(rec) do
     case rec do
-      Relex.App[version: version, name: name,  path: nil] ->
-        paths = lc path inlist :code.get_path, do: list_to_binary(path)
+      Relex.App[version: version, name: name, code_path: code_path, path: nil] ->
+        paths = code_path
         paths = Enum.filter(paths, fn(p) -> File.exists?(File.join([p, "#{name}.app"])) end)
         paths = lc path inlist paths, do: File.join(path, "..")
         case paths do
@@ -58,12 +58,12 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
   end
 
   def dependencies(rec) do
-    (lc app inlist (keys(rec)[:applications] || []), do: new(app)) ++
+    (lc app inlist (keys(rec)[:applications] || []), do: code_path(code_path(rec), new(app))) ++
     included_applications(rec)
   end
 
   def included_applications(rec) do
-    lc app inlist (keys(rec)[:included_applications] || []), do: new(app)
+    lc app inlist (keys(rec)[:included_applications] || []), do: code_path(code_path(rec), new(app))
   end
 
   defp keys(rec) do

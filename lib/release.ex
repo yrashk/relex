@@ -41,6 +41,14 @@ defmodule Relex.Release do
       defcallback code_path do
         lc path inlist :code.get_path, do: list_to_binary(path)
       end
+      def code_path(options) do
+        ebins = List.flatten(lc path inlist lib_dirs(options) do
+                               File.wildcard(File.join([File.expand_path(path),"**","ebin"]))
+                             end)
+        ebins ++ code_path
+      end
+
+      defcallback lib_dirs, do: []
 
       defcallback root_dir do
         list_to_binary(:code.root_dir)
@@ -109,7 +117,7 @@ defmodule Relex.Release do
     File.mkdir_p! path
     rel_file = File.join(path, "#{release.name(options)}.rel")
     File.write rel_file, :io_lib.format("~p.~n",[rel(release, options)])
-    code_path = lc path inlist release.code_path, do: to_char_list(path)
+    code_path = lc path inlist release.code_path(options), do: to_char_list(path)
     :systools.make_script(to_char_list(File.join(path, release.name(options))), [path: code_path, outdir: to_char_list(path)])
     if release.default_release?(options) and release.include_erts?(options) do
       lib_path = File.join([options[:path] || File.cwd!, release.name(options), "lib"])
@@ -133,7 +141,7 @@ defmodule Relex.Release do
 
   defp apps(release, options) do
     requirements = release.basic_applications(options) ++ release.applications(options)
-    apps = lc req inlist requirements, do: Relex.App.new(req)
+    apps = lc req inlist requirements, do: Relex.App.code_path(release.code_path(options), Relex.App.new(req))
     deps = List.flatten(lc app inlist apps, do: deps(app))
     apps = List.uniq(apps ++ deps)
     apps = 
