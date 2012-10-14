@@ -30,21 +30,18 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
         paths = lc path inlist paths, do: File.join(path, "..")
         case paths do
          [] -> raise NotFound, app: rec
-         [path] -> path
+         [path] -> 
+           if version_matches?(version, path(path, rec)) do
+             path
+           else
+             raise NotFound, app: rec
+           end
          _ ->
            apps = 
            lc path inlist paths do
              app(update([path: path], rec))
            end
-           unless nil?(version) do
-             apps = Enum.filter(apps, fn(app) -> 
-                                        if is_record(version, Regex) do
-                                          Regex.match?(version(app), version)
-                                        else
-                                          version(app) == version 
-                                        end
-                                      end)
-           end
+           apps = Enum.filter(apps, fn(app) -> version_matches?(version, app) end)
            apps = List.sort(apps, fn(app1, app2) -> version(app2) <= version(app1) end)
            path(hd(apps))
         end
@@ -55,6 +52,15 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
 
   def version(rec) do
     keys(rec)[:vsn]
+  end
+
+  defp version_matches?(nil, _app), do: true
+  defp version_matches?(version, app) do
+    if is_record(version, Regex) do
+      Regex.match?(version, version(app))
+    else
+      to_binary(version(app)) == to_binary(version)
+    end
   end
 
   def dependencies(rec) do
@@ -75,6 +81,7 @@ end
 
 defimpl Binary.Inspect, for: Relex.App do
   def inspect(Relex.App[name: name, version: version], _opts) do
+    if is_record(version, Regex), do: version = inspect(version)
     version = if nil?(version), do: "", else: "-#{version}"
     "#{name}#{version}"
   end
