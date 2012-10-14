@@ -72,3 +72,10 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
   end
 
 end
+
+defimpl Binary.Inspect, for: Relex.App do
+  def inspect(Relex.App[name: name, version: version], _opts) do
+    version = if nil?(version), do: "", else: "-#{version}"
+    "#{name}#{version}"
+  end
+end
