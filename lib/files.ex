@@ -33,8 +33,6 @@ defmodule Relex.Files do
     else
       :filelib.ensure_dir(dest_file)
       File.cp!(file, dest_file)
-      stat = File.stat!(file)
-      File.write_stat!(dest_file, stat)
     end
     copy_files(files, src, dest)
   end
