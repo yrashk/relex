@@ -56,9 +56,12 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
 
   defp version_matches?(nil, _app), do: true
   defp version_matches?(version, app) do
-    if is_record(version, Regex) do
+    cond do
+    is_record(version, Regex) ->
       Regex.match?(version, version(app))
-    else
+    is_function(version, 1) ->
+      version.(app)
+    true ->
       to_binary(version(app)) == to_binary(version)
     end
   end
@@ -81,7 +84,14 @@ end
 
 defimpl Binary.Inspect, for: Relex.App do
   def inspect(Relex.App[name: name, version: version], _opts) do
-    if is_record(version, Regex), do: version = inspect(version)
+    cond do
+      is_record(version, Regex) ->
+       version = inspect(version)
+      is_function(version) ->
+       version = "<version checked by #{inspect(version)}>"
+      true ->
+       :ok
+    end       
     version = if nil?(version), do: "", else: "-#{version}"
     "#{name}#{version}"
   end
