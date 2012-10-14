@@ -48,3 +48,4 @@ and then, inside of your project module, define the release:
   end
 ```
 
+Now you can run `mix relex.assemble` and `mix relex.clean` commands
