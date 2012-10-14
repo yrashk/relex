@@ -39,7 +39,7 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
          _ ->
            apps = 
            lc path inlist paths do
-             app(update([path: path], rec))
+             update([path: path], rec)
            end
            apps = Enum.filter(apps, fn(app) -> version_matches?(version, app) end)
            apps = List.sort(apps, fn(app1, app2) -> version(app2) <= version(app1) end)
