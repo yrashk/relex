@@ -170,7 +170,7 @@ defmodule Relex.Release do
                     Dict.put(acc, name, app)
                   end
                 end)
-    Enum.filter apps, fn(app) -> release.include_application?(options, Relex.App.name(app)) end
+    Enum.filter apps, fn(app) -> release.include_application?(options, app) end
   end
 
   defp deps(app) do
