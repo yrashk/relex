@@ -25,25 +25,32 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
   def path(rec) do
     case rec do
       Relex.App[version: version, name: name, code_path: code_path, path: nil] ->
-        paths = code_path
-        paths = Enum.filter(paths, fn(p) -> File.exists?(File.join([p, "#{name}.app"])) end)
-        paths = lc path inlist paths, do: File.join(path, "..")
-        case paths do
-         [] -> raise NotFound, app: rec
-         [path] -> 
-           if version_matches?(version, path(path, rec)) do
-             path
-           else
-             raise NotFound, app: rec
-           end
-         _ ->
-           apps = 
-           lc path inlist paths do
-             update([path: path], rec)
-           end
-           apps = Enum.filter(apps, fn(app) -> version_matches?(version, app) end)
-           apps = List.sort(apps, fn(app1, app2) -> version(app2) <= version(app1) end)
-           path(hd(apps))
+        case :ets.lookup(__MODULE__, {:path, {name, version}}) do
+          [{_, path}] -> path
+          _ ->
+            paths = code_path
+            paths = Enum.filter(paths, fn(p) -> File.exists?(File.join([p, "#{name}.app"])) end)
+            paths = lc path inlist paths, do: File.join(path, "..")
+            result =
+            case paths do
+             [] -> raise NotFound, app: rec
+             [path] -> 
+               if version_matches?(version, path(path, rec)) do
+                 path
+               else
+                 raise NotFound, app: rec
+               end
+             _ ->
+               apps = 
+               lc path inlist paths do
+                 update([path: path], rec)
+               end
+               apps = Enum.filter(apps, fn(app) -> version_matches?(version, app) end)
+               apps = List.sort(apps, fn(app1, app2) -> version(app2) <= version(app1) end)
+               path(hd(apps))
+            end
+            :ets.insert(__MODULE__, {{:path, {name, version}}, result})
+            result
         end
       Relex.App[path: path] ->
         path

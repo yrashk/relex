@@ -228,6 +228,7 @@ defmodule Relex.Release do
   end
   def bundle!(:applications, release, options) do
     path = File.expand_path(File.join([options[:path] || File.cwd!, release.name(options), "lib"]))
+    if :ets.info(Relex.App) == :undefined, do: :ets.new(Relex.App, [:public, :named_table, :ordered_set])
     apps = apps(release, options)
     apps_files = lc app inlist apps do
       src = File.expand_path(Relex.App.path(app))
