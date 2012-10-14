@@ -34,6 +34,9 @@ defmodule Mix.Tasks.Relex.Assemble do
     rescue e ->
         Mix.shell.error "Error during the assembly of #{release_info}"
         Mix.shell.error e.message
+        unless nil?(System.get_env("RELEX_DEBUG")) do
+          Mix.shell.error Exception.formatted_stacktrace
+        end
     end
   end
 end
