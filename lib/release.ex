@@ -260,6 +260,7 @@ defmodule Relex.Release do
       target = File.join([lib_path, erts_vsn, "bin"])
       File.cp!(boot, File.join([target, "start.boot"]))
     end
+    :ets.delete(Relex.App)    
   end
 
   def rel(release, apps, options) do
