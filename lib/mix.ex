@@ -33,7 +33,7 @@ defmodule Mix.Tasks.Relex.Assemble do
       end
     rescue e ->
         Mix.shell.error "Error during the assembly of #{release_info}"
-        Mix.shell.error "#{e.message}"
+        Mix.shell.error e.message
     end
   end
 end
