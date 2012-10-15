@@ -190,11 +190,20 @@ defmodule Relex.Release do
       """
       defcallback relocatable?, do: true
 
-      def after_bundle(opts) do
-        Relex.Helper.MinimalStarter.render(__MODULE__, opts)
-      end
+      Module.register_attribute __MODULE__, :after_bundle
 
-      defoverridable after_bundle: 1
+      def after_bundle(opts) do
+        lc {:after_bundle, [step]} inlist __info__(:attributes) do
+          case step do
+            callback when is_atom(callback) -> 
+              if function_exported?(__MODULE__, callback, 1) do
+                apply(__MODULE__, callback, [opts])
+              end
+            _ -> :ok
+          end
+        end
+        :ok
+      end
 
     end
   end
@@ -256,8 +265,8 @@ defmodule Relex.Release do
       lib_path = File.join([options[:path] || File.cwd!, release.name(options)])
       boot_file = "#{release.name(options)}.boot"
       boot = File.join([path, boot_file])
-      erts_vsn = "erts-#{release.erts_version(options)}"      
-      target = File.join([lib_path, erts_vsn, "bin"])
+      target = File.join([lib_path, "bin"])
+      File.mkdir_p!(target)
       File.cp!(boot, File.join([target, "start.boot"]))
     end
     :ets.delete(Relex.App)    
