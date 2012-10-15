@@ -14,9 +14,15 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
 
   def app(rec) do
     case rec do
-      Relex.App[name: name, app: nil] ->
-        {:ok, [app]} = :file.consult(File.join([path(rec),"ebin","#{name}.app"]))
-        app
+      Relex.App[name: name, version: version, app: nil] ->
+        key = {:app, {name, version}}
+        case :ets.lookup(__MODULE__, key) do
+          [{_, app}] -> app
+          _ ->
+            {:ok, [app]} = :file.consult(File.join([path(rec),"ebin","#{name}.app"]))
+            :ets.insert(__MODULE__, {key, app})
+            app
+        end
       Relex.App[app: app] ->
         app
     end
@@ -26,7 +32,8 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
     case rec do
       Relex.App[version: version, name: name, code_path: code_path, path: nil] ->
         case :ets.lookup(__MODULE__, {:path, {name, version}}) do
-          [{_, path}] -> path
+          [{_, path}] -> 
+            path
           _ ->
             paths = code_path
             paths = Enum.filter(paths, fn(p) -> File.exists?(File.join([p, "#{name}.app"])) end)
