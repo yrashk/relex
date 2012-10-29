@@ -16,9 +16,9 @@ defmodule Relex.Release do
 
   defmodule Behaviour do
     use Behaviour
-    defcallback name
-    defcallback version
-    defcallback applications
+    defcallback name, do: String.t
+    defcallback version, do: String.t
+    defcallback applications, do: list(atom)
   end
 
   defmacro __using__(_) do
