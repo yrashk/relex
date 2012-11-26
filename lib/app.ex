@@ -53,7 +53,7 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
                  update([path: path], rec)
                end
                apps = Enum.filter(apps, fn(app) -> version_matches?(version, app) end)
-               apps = List.sort(apps, fn(app1, app2) -> version(app2) <= version(app1) end)
+               apps = Enum.sort(apps, fn(app1, app2) -> version(app2) <= version(app1) end)
                path(hd(apps))
             end
             :ets.insert(__MODULE__, {{:path, {name, version}}, result})
