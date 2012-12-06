@@ -227,6 +227,9 @@ defmodule Relex.Release do
           content = File.read!(template)
           new_content = String.replace(content, "%FINAL_ROOTDIR%", "$(cd ${0%/*} && pwd)/../..", global: true)
           new_file = File.join([target, "bin", File.basename(template, ".src")])
+          if File.exists?(new_file) do
+            :file.delete(new_file)
+          end
           File.write!(new_file, new_content)
           stat = File.stat!(template)
           File.write_stat!(new_file, File.Stat.mode(493, stat))
