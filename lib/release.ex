@@ -16,9 +16,9 @@ defmodule Relex.Release do
 
   defmodule Behaviour do
     use Behaviour
-    defcallback name, do: String.t
-    defcallback version, do: String.t
-    defcallback applications, do: list(atom)
+    defcallback name :: String.t
+    defcallback version :: String.t
+    defcallback applications :: list(atom)
   end
 
   defmacro __using__(_) do
@@ -286,7 +286,7 @@ defmodule Relex.Release do
     requirements = release.basic_applications(options) ++ release.applications(options)
     apps = lc req inlist requirements, do: Relex.App.code_path(release.code_path(options), Relex.App.new(req))
     deps = List.flatten(lc app inlist apps, do: deps(app))
-    apps = List.uniq(apps ++ deps)
+    apps = Enum.uniq(apps ++ deps)
     apps = 
     Dict.values(Enum.reduce apps, HashDict.new, 
                 fn(app, acc) ->
