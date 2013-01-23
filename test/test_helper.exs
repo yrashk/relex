@@ -1,2 +1,1 @@
-Relex.start
 ExUnit.start

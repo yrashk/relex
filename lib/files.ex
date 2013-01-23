@@ -5,7 +5,7 @@ defmodule Relex.Files do
   def files(directory, cb) do
     case F.list_dir(directory) do
       {:ok, files} ->
-        files = lc file inlist files, do: File.join(directory, to_binary(file))
+        files = lc file inlist files, do: Path.join(directory, to_binary(file))
         files = Enum.filter(files, cb.(&1))
         directories = Enum.filter(files, File.dir?(&1))
         files = files -- directories
@@ -20,14 +20,14 @@ defmodule Relex.Files do
   end
 
   def relative_path(base, file) do
-    split = File.split(base) 
-    File.join(:lists.nthtail(length(split), File.split(file)))    
+    split = Path.split(base) 
+    Path.join(:lists.nthtail(length(split), Path.split(file)))    
   end
 
   defp copy_files([], _, _), do: :ok
   defp copy_files([file|files], src, dest) do
   rel_path = relative_path(src, file)
-    dest_file = File.join([dest, rel_path])    
+    dest_file = Path.join([dest, rel_path])    
     if File.dir?(file) do
       File.mkdir_p(dest_file)
     else

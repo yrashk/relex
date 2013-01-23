@@ -48,7 +48,7 @@ defmodule Mix.Tasks.Relex.Clean do
 
   def run(_args) do
     {release, options} = Mix.Tasks.Relex.release
-    path = File.expand_path(File.join(options[:path] || ".", release.name(options)))
+    path = Path.expand(Path.join(options[:path] || ".", release.name(options)))
     File.rm_rf! path
   end  
 end

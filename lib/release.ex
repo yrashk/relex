@@ -123,7 +123,7 @@ defmodule Relex.Release do
       end
       def code_path(options) do
         ebins = List.flatten(lc path inlist lib_dirs(options) do
-                               File.wildcard(File.join([File.expand_path(path),"**","ebin"]))
+                               Path.wildcard(Path.join([Path.expand(path),"**","ebin"]))
                              end)
         ebins ++ code_path
       end
@@ -209,24 +209,24 @@ defmodule Relex.Release do
   end
 
   def bundle!(:erts, release, options) do
-    path = File.join([options[:path] || File.cwd!, release.name(options)])
+    path = Path.join([options[:path] || File.cwd!, release.name(options)])
     erts_vsn = "erts-#{release.erts_version(options)}"
-    src = File.join(release.root_dir(options), erts_vsn)
+    src = Path.join(release.root_dir(options), erts_vsn)
     unless File.exists?(src) do
      {:error, :erts_not_found}
     else
-      target = File.join(path, erts_vsn)
+      target = Path.join(path, erts_vsn)
       files = Relex.Files.files(src,
                                 fn(file) -> 
                                   release.include_erts_file?(options, Relex.Files.relative_path(src, file)) 
                                 end)
       Relex.Files.copy(files, src, target)
       if release.relocatable?(options) do
-        templates = File.wildcard(File.join([target, "bin", "*.src"]))
+        templates = Path.wildcard(Path.join([target, "bin", "*.src"]))
         lc template inlist templates do 
           content = File.read!(template)
           new_content = String.replace(content, "%FINAL_ROOTDIR%", "$(cd ${0%/*} && pwd)/../..", global: true)
-          new_file = File.join([target, "bin", File.basename(template, ".src")])
+          new_file = Path.join([target, "bin", Path.basename(template, ".src")])
           if File.exists?(new_file) do
             :file.delete(new_file)
           end
@@ -239,11 +239,11 @@ defmodule Relex.Release do
     :ok
   end
   def bundle!(:applications, release, options) do
-    path = File.expand_path(File.join([options[:path] || File.cwd!, release.name(options), "lib"]))
+    path = Path.expand(Path.join([options[:path] || File.cwd!, release.name(options), "lib"]))
     if :ets.info(Relex.App) == :undefined, do: :ets.new(Relex.App, [:public, :named_table, :ordered_set])
     apps = apps(release, options)
     apps_files = lc app inlist apps do
-      src = File.expand_path(Relex.App.path(app))
+      src = Path.expand(Relex.App.path(app))
       files = Relex.Files.files(src,
                                 fn(file) -> 
                                   release.include_app_file?(options, Relex.Files.relative_path(src, file)) 
@@ -251,26 +251,26 @@ defmodule Relex.Release do
       {app, src, files}
     end
     lc {app, src, files} inlist apps_files do
-      target = File.join(path, "#{Relex.App.name(app)}-#{Relex.App.version(app)}")
+      target = Path.join(path, "#{Relex.App.name(app)}-#{Relex.App.version(app)}")
       Relex.Files.copy(files, src, target)
     end
     apps
   end
 
   def write_script!(release, apps, options) do
-    path = File.join([options[:path] || File.cwd!, release.name(options), "releases", release.version(options)])
+    path = Path.join([options[:path] || File.cwd!, release.name(options), "releases", release.version(options)])
     File.mkdir_p! path
-    rel_file = File.join(path, "#{release.name(options)}.rel")
+    rel_file = Path.join(path, "#{release.name(options)}.rel")
     File.write rel_file, :io_lib.format("~p.~n",[rel(release, apps, options)])
     code_path = lc path inlist release.code_path(options), do: to_char_list(path)
-    :systools.make_script(to_char_list(File.join(path, release.name(options))), [path: code_path, outdir: to_char_list(path)])
+    :systools.make_script(to_char_list(Path.join(path, release.name(options))), [path: code_path, outdir: to_char_list(path)])
     if release.default_release?(options) and release.include_erts?(options) do
-      lib_path = File.join([options[:path] || File.cwd!, release.name(options)])
+      lib_path = Path.join([options[:path] || File.cwd!, release.name(options)])
       boot_file = "#{release.name(options)}.boot"
-      boot = File.join([path, boot_file])
-      target = File.join([lib_path, "bin"])
+      boot = Path.join([path, boot_file])
+      target = Path.join([lib_path, "bin"])
       File.mkdir_p!(target)
-      File.cp!(boot, File.join([target, "start.boot"]))
+      File.cp!(boot, Path.join([target, "start.boot"]))
     end
     :ets.delete(Relex.App)    
   end

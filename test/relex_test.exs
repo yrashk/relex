@@ -27,5 +27,5 @@ defmodule RelexTest do
     assert TestRelease.assemble!(path: path) == :ok
   end
 
-  defp path, do: File.join(File.dirname(__FILE__), "tmp")
+  defp path, do: Path.join(Path.dirname(__FILE__), "tmp")
 end
