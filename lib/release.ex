@@ -15,7 +15,7 @@ defmodule Relex.Release do
   """
 
   defmodule Behaviour do
-    use Behaviour
+    use Elixir.Behaviour
     defcallback name :: String.t
     defcallback version :: String.t
     defcallback applications :: list(atom)
