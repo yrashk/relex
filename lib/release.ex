@@ -35,7 +35,7 @@ defmodule Relex.Release do
 
           defmodule #{inspect __MODULE__} do
             use Relex.Release
-    
+
             def name, do: "my"
             def version, do: "1.0"
           end
@@ -48,7 +48,7 @@ defmodule Relex.Release do
 
       However, if you want to be able to pass some options to the callback
       through `assemble!/1`, you can use those options in the callback if
-      you override the N+1 version which gets the config prepended prior to the rest of 
+      you override the N+1 version which gets the config prepended prior to the rest of
       the arguments:
 
           def name(config), do: config[:release_name]
@@ -58,7 +58,7 @@ defmodule Relex.Release do
       def bundle!(kind, opts // []), do: bundle!(kind, __MODULE__, opts)
 
       @doc """
-      Assembles a release. 
+      Assembles a release.
 
       ### Options:
 
@@ -67,12 +67,13 @@ defmodule Relex.Release do
       def assemble!(opts // []) do
         apps = bundle!(:applications, opts)
         if include_erts?(opts), do: bundle!(:erts, opts)
-        write_script!(apps, opts)        
+        if include_elixir?(opts), do: bundle!(:elixir, opts)
+        write_script!(apps, opts)
         after_bundle(opts)
       end
 
       @doc """
-      Release name, module name by default 
+      Release name, module name by default
       """
       defcallback name, do: inspect(__MODULE__)
 
@@ -89,8 +90,8 @@ defmodule Relex.Release do
       however, remove sasl. Please note that removal of sasl will lead to inability
       to do release upgrades, as sasl includes release_handler module
       """
-      defcallback basic_applications do
-        [:kernel, :stdlib, :sasl]
+      defcallback basic_applications(options) do
+        %w(kernel stdlib sasl)a ++ (if include_elixir?(options), do: %w(elixir iex)a, else: [])
       end
 
       @doc """
@@ -159,7 +160,7 @@ defmodule Relex.Release do
       By default, it's bin/*, lib/*, include/* and info
       """
       defcallback include_erts_file?(file) do
-        regexes = [%r"^bin(/.+)?$", %r"^lib(/.+)?$", %r"^include(/.+)?$", %r(^info$)]        
+        regexes = [%r"^bin(/.+)?$", %r"^lib(/.+)?$", %r"^include(/.+)?$", %r(^info$)]
         Enum.any?(regexes, Regex.match?(&1, file))
       end
 
@@ -179,6 +180,11 @@ defmodule Relex.Release do
       defcallback include_erts?, do: true
 
       @doc """
+      Specifies whether Elixir binaries (elixir, iex) should be included into the release. True by default
+      """
+      defcallback include_elixir?, do: true
+
+      @doc """
       Specifies whether this release's boot file should be designated as a
       default "start" boot file. True by default.
       """
@@ -190,12 +196,10 @@ defmodule Relex.Release do
       """
       defcallback relocatable?, do: true
 
-      Module.register_attribute __MODULE__, :after_bundle
-
       def after_bundle(opts) do
         lc {:after_bundle, [step]} inlist __info__(:attributes) do
           case step do
-            callback when is_atom(callback) -> 
+            callback when is_atom(callback) ->
               if function_exported?(__MODULE__, callback, 1) do
                 apply(__MODULE__, callback, [opts])
               end
@@ -217,13 +221,13 @@ defmodule Relex.Release do
     else
       target = Path.join(path, erts_vsn)
       files = Relex.Files.files(src,
-                                fn(file) -> 
-                                  release.include_erts_file?(options, Relex.Files.relative_path(src, file)) 
+                                fn(file) ->
+                                  release.include_erts_file?(options, Relex.Files.relative_path(src, file))
                                 end)
       Relex.Files.copy(files, src, target)
       if release.relocatable?(options) do
         templates = Path.wildcard(Path.join([target, "bin", "*.src"]))
-        lc template inlist templates do 
+        lc template inlist templates do
           content = File.read!(template)
           new_content = String.replace(content, "%FINAL_ROOTDIR%", "$(cd ${0%/*} && pwd)/../..", global: true)
           new_file = Path.join([target, "bin", Path.basename(template, ".src")])
@@ -238,6 +242,41 @@ defmodule Relex.Release do
     end
     :ok
   end
+
+  def bundle!(:elixir, release, options) do
+    path = Path.join([options[:path] || File.cwd!, release.name(options)])
+    bin_path = Path.join(path, "bin")
+    File.mkdir_p!(bin_path)
+    lc executable inlist %w(elixir iex) do
+      executable_path = System.find_executable(executable)
+      File.cp!(executable_path, Path.join(bin_path, Path.basename(executable)))
+    end
+    erts_vsn = "erts-#{release.erts_version(options)}"
+    erts_bin_path = Path.join([path, erts_vsn, "bin"])
+    # this is just to make elixir shell script happy:
+    new_erl = Path.join(bin_path, "erl")
+    File.write! new_erl, """
+    #! /bin/sh
+    readlink_f () {
+      cd "$(dirname "$1")" > /dev/null
+      local filename="$(basename "$1")"
+      if [ -h "$filename" ]; then
+        readlink_f "$(readlink "$filename")"
+      else
+        echo "`pwd -P`/$filename"
+      fi
+    }
+
+    SELF=$(readlink_f "$0")
+    SCRIPT_PATH=$(dirname "$SELF")
+
+    exec $SCRIPT_PATH/../#{Path.relative_to(erts_bin_path, path)}/erl $*
+    """
+    stat = File.stat!(new_erl)
+    File.write_stat!(new_erl, File.Stat.mode(493, stat))
+    File.touch(Path.join([path, "releases", "RELEASES"]))
+  end
+
   def bundle!(:applications, release, options) do
     path = Path.expand(Path.join([options[:path] || File.cwd!, release.name(options), "lib"]))
     if :ets.info(Relex.App) == :undefined, do: :ets.new(Relex.App, [:public, :named_table, :ordered_set])
@@ -245,8 +284,8 @@ defmodule Relex.Release do
     apps_files = lc app inlist apps do
       src = Path.expand(Relex.App.path(app))
       files = Relex.Files.files(src,
-                                fn(file) -> 
-                                  release.include_app_file?(options, Relex.Files.relative_path(src, file)) 
+                                fn(file) ->
+                                  release.include_app_file?(options, Relex.Files.relative_path(src, file))
                                 end)
       {app, src, files}
     end
@@ -272,16 +311,16 @@ defmodule Relex.Release do
       File.mkdir_p!(target)
       File.cp!(boot, Path.join([target, "start.boot"]))
     end
-    :ets.delete(Relex.App)    
+    :ets.delete(Relex.App)
   end
 
   def rel(release, apps, options) do
     {:release, {to_char_list(release.name(options)), to_char_list(release.version(options))},
                {:erts, to_char_list(release.erts_version(options))},
                (lc app inlist apps do
-                  {Relex.App.name(app), Relex.App.version(app), 
-                   Relex.App.type(app), 
-                   lc inc_app inlist Relex.App.included_applications(app), do: Relex.App.name(inc_app)}
+                  {Relex.App.name(app), Relex.App.version(app),
+                   Relex.App.type(app),
+                   (lc inc_app inlist Relex.App.included_applications(app), do: Relex.App.name(inc_app))}
                end)}
   end
 
@@ -290,8 +329,8 @@ defmodule Relex.Release do
     apps = lc req inlist requirements, do: Relex.App.code_path(release.code_path(options), Relex.App.new(req))
     deps = List.flatten(lc app inlist apps, do: deps(app))
     apps = Enum.uniq(apps ++ deps)
-    apps = 
-    Dict.values(Enum.reduce apps, HashDict.new, 
+    apps =
+    Dict.values(Enum.reduce apps, HashDict.new,
                 fn(app, acc) ->
                   name = Relex.App.name(app)
                   if existing_app = Dict.get(acc, name) do
@@ -300,7 +339,7 @@ defmodule Relex.Release do
                       Dict.put(acc, name, app)
                     else
                       acc
-                    end  
+                    end
                   else
                     Dict.put(acc, name, app)
                   end
@@ -326,7 +365,7 @@ defmodule Relex.Release do
       @doc @cb_doc
       def unquote(callback_name)(unquote_splicing(args)), unquote(opts)
       Module.delete_attribute __MODULE__, :cb_doc
-      defoverridable [{unquote(callback_name), unquote(sz)}, 
+      defoverridable [{unquote(callback_name), unquote(sz)},
                       {unquote(callback_name), unquote(sz+1)}]
     end
   end

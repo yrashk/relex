@@ -96,7 +96,7 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
 
 end
 
-defimpl Binary.Inspect, for: Relex.App do
+defimpl Inspect, for: Relex.App do
   def inspect(Relex.App[name: name, version: version], _opts) do
     cond do
       is_record(version, Regex) ->
