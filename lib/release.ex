@@ -196,6 +196,8 @@ defmodule Relex.Release do
       """
       defcallback relocatable?, do: true
 
+      Module.register_attribute __MODULE__, :after_bundle, persist: true, accumulate: true
+
       def after_bundle(opts) do
         lc {:after_bundle, [step]} inlist __info__(:attributes) do
           case step do
