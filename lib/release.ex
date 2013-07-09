@@ -272,7 +272,7 @@ defmodule Relex.Release do
     SELF=$(readlink_f "$0")
     SCRIPT_PATH=$(dirname "$SELF")
 
-    exec $SCRIPT_PATH/../#{Path.relative_to(erts_bin_path, path)}/erl $*
+    exec $SCRIPT_PATH/../#{Path.relative_to(erts_bin_path, path)}/erl "$@"
     """
     stat = File.stat!(new_erl)
     File.write_stat!(new_erl, File.Stat.mode(493, stat))
