@@ -10,7 +10,7 @@ defmodule Relex.Mixfile do
 
   # Configuration for the OTP application
   def application do
-    []
+    [applications: %w(sasl)a]
   end
 
   defp deps do

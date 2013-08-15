@@ -276,7 +276,16 @@ defmodule Relex.Release do
     """
     stat = File.stat!(new_erl)
     File.write_stat!(new_erl, File.Stat.mode(493, stat))
-    File.touch(Path.join([path, "releases", "RELEASES"]))
+    rel_path = Path.join(path, "releases")
+    rel_file = Path.join([rel_path, release.version(options), "#{release.name(options)}.rel"])
+    lib_dir = Path.join(path, "lib")
+    apps =
+    lc file inlist File.ls!(lib_dir), File.dir?(file),  file =~ %r/.+-.+/ do
+      [name, version] = String.split(file)
+      name = :"#{name}"
+      {name, version, lib_dir}
+    end
+    :release_handler.create_RELEASES(path, rel_path, rel_file, apps)
   end
 
   def bundle!(:applications, release, options) do
