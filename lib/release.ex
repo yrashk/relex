@@ -283,9 +283,9 @@ defmodule Relex.Release do
     lc file inlist File.ls!(lib_dir), File.dir?(file),  file =~ %r/.+-.+/ do
       [name, version] = String.split(file)
       name = :"#{name}"
-      {name, version, lib_dir}
+      {name, to_char_list(version), to_char_list(lib_dir)}
     end
-    :release_handler.create_RELEASES(path, rel_path, rel_file, apps)
+    :release_handler.create_RELEASES(to_char_list(path), to_char_list(rel_path), to_char_list(rel_file), apps)
   end
 
   def bundle!(:applications, release, options) do
