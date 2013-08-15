@@ -66,9 +66,9 @@ defmodule Relex.Release do
       """
       def assemble!(opts // []) do
         apps = bundle!(:applications, opts)
+        write_script!(apps, opts)
         if include_erts?(opts), do: bundle!(:erts, opts)
         if include_elixir?(opts), do: bundle!(:elixir, opts)
-        write_script!(apps, opts)
         after_bundle(opts)
       end
 
@@ -278,14 +278,7 @@ defmodule Relex.Release do
     File.write_stat!(new_erl, File.Stat.mode(493, stat))
     rel_path = Path.join(path, "releases")
     rel_file = Path.join([rel_path, release.version(options), "#{release.name(options)}.rel"])
-    lib_dir = Path.join(path, "lib")
-    apps =
-    lc file inlist File.ls!(lib_dir), File.dir?(file),  file =~ %r/.+-.+/ do
-      [name, version] = String.split(file)
-      name = :"#{name}"
-      {name, to_char_list(version), to_char_list(lib_dir)}
-    end
-    :release_handler.create_RELEASES(to_char_list(path), to_char_list(rel_path), to_char_list(rel_file), apps)
+    :release_handler.create_RELEASES(to_char_list(path), to_char_list(rel_file))
   end
 
   def bundle!(:applications, release, options) do
