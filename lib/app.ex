@@ -2,7 +2,7 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
 
   defexception NotFound, app: nil do
     def message(exc), do: "Application #{inspect app(exc)} not found"
-  end  
+  end
 
   defoverridable new: 1, app: 1, path: 1, version: 1
 
@@ -32,7 +32,7 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
     case rec do
       Relex.App[version: version, name: name, code_path: code_path, path: nil] ->
         case :ets.lookup(__MODULE__, {:path, {name, version}}) do
-          [{_, path}] -> 
+          [{_, path}] ->
             path
           _ ->
             paths = code_path
@@ -41,14 +41,14 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
             result =
             case paths do
              [] -> raise NotFound, app: rec
-             [path] -> 
+             [path] ->
                if version_matches?(version, path(path, rec)) do
                  path
                else
                  raise NotFound, app: rec
                end
              _ ->
-               apps = 
+               apps =
                lc path inlist paths do
                  update([path: path], rec)
                end
@@ -76,7 +76,7 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
     is_function(version, 1) ->
       version.(app)
     true ->
-      to_binary(version(app)) == to_binary(version)
+      to_string(version(app)) == to_string(version)
     end
   end
 
@@ -91,7 +91,7 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
 
   defp keys(rec) do
     {:application, _, opts} = app(rec)
-    Keyword.from_enum(opts)  
+    Keyword.from_enum(opts)
   end
 
 end
@@ -105,7 +105,7 @@ defimpl Inspect, for: Relex.App do
        version = "<version checked by #{inspect(version)}>"
       true ->
        :ok
-    end       
+    end
     version = if nil?(version), do: "", else: "-#{version}"
     "#{name}#{version}"
   end
