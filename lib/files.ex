@@ -5,7 +5,7 @@ defmodule Relex.Files do
   def files(directory, cb) do
     case F.list_dir(directory) do
       {:ok, files} ->
-        files = lc file inlist files, do: Path.join(directory,  as the builds can(file))
+        files = lc file inlist files, do: Path.join(directory, to_string(file))
         files = Enum.filter(files, cb.(&1))
         directories = Enum.filter(files, File.dir?(&1))
         files = files -- directories
