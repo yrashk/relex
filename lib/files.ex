@@ -6,8 +6,8 @@ defmodule Relex.Files do
     case F.list_dir(directory) do
       {:ok, files} ->
         files = lc file inlist files, do: Path.join(directory, to_string(file))
-        files = Enum.filter(files, cb.(&1))
-        directories = Enum.filter(files, File.dir?(&1))
+        files = Enum.filter(files, &cb.(&1))
+        directories = Enum.filter(files, &File.dir?(&1))
         files = files -- directories
         files ++ List.flatten(lc dir inlist directories, do: files(dir, cb))
       other -> other

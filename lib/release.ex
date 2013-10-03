@@ -161,7 +161,7 @@ defmodule Relex.Release do
       """
       defcallback include_erts_file?(file) do
         regexes = [%r"^bin(/.+)?$", %r"^lib(/.+)?$", %r"^include(/.+)?$", %r(^info$)]
-        Enum.any?(regexes, Regex.match?(&1, file))
+        Enum.any?(regexes, &Regex.match?(&1, file))
       end
 
       @doc """
@@ -171,7 +171,7 @@ defmodule Relex.Release do
       """
       defcallback include_app_file?(file) do
         regexes = [%r"^ebin(/.+)?$", %r"^priv(/.+)?$", %r"^include(/.+)?$"]
-        Enum.any?(regexes, Regex.match?(&1, file))
+        Enum.any?(regexes, &Regex.match?(&1, file))
       end
 
       @doc """
