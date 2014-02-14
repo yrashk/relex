@@ -4,7 +4,7 @@ defmodule Relex.Mixfile do
   def project do
     [ app: :relex,
       version: "0.0.1",
-      elixir: ">= 0.9.4-dev",
+      elixir: ">= 0.12.4",
       deps: deps ]
   end
 
