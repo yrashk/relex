@@ -1,4 +1,4 @@
-Code.require_file "../test_helper.exs", __FILE__
+Code.require_file "../test_helper.exs", __ENV__.file
 
 defmodule TestRelease do
   use Relex.Release
@@ -52,5 +52,5 @@ defmodule RelexTest do
     assert TestRelease.StartClean.AsDefault.assemble!(path: path) == :ok
   end
 
-  defp path, do: Path.join(Path.dirname(__FILE__), "tmp")
+  defp path, do: Path.join(Path.dirname(__ENV__.file), "tmp")
 end

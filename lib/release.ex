@@ -100,7 +100,7 @@ defmodule Relex.Release do
       to do release upgrades, as sasl includes release_handler module
       """
       defcallback basic_applications(options) do
-        %w(kernel stdlib sasl)a ++ (if include_elixir?(options), do: %w(elixir iex)a, else: [])
+        ~w(kernel stdlib sasl)a ++ (if include_elixir?(options), do: ~w(elixir iex)a, else: [])
       end
 
       @doc """
@@ -169,7 +169,7 @@ defmodule Relex.Release do
       By default, it's bin/*, lib/*, include/* and info
       """
       defcallback include_erts_file?(file) do
-        regexes = [%r"^bin(/.+)?$", %r"^lib(/.+)?$", %r"^include(/.+)?$", %r(^info$)]
+        regexes = [~r"^bin(/.+)?$", ~r"^lib(/.+)?$", ~r"^include(/.+)?$", ~r(^info$)]
         Enum.any?(regexes, &Regex.match?(&1, file))
       end
 
@@ -179,7 +179,7 @@ defmodule Relex.Release do
       By default, it's ebin/*, priv/* and include/*
       """
       defcallback include_app_file?(file) do
-        regexes = [%r"^ebin(/.+)?$", %r"^priv(/.+)?$", %r"^include(/.+)?$"]
+        regexes = [~r"^ebin(/.+)?$", ~r"^priv(/.+)?$", ~r"^include(/.+)?$"]
         Enum.any?(regexes, &Regex.match?(&1, file))
       end
 
@@ -266,7 +266,7 @@ defmodule Relex.Release do
     path = Path.join([options[:path] || File.cwd!, release.name(options)])
     bin_path = Path.join(path, "bin")
     File.mkdir_p!(bin_path)
-    lc executable inlist %w(elixir iex) do
+    lc executable inlist ~w(elixir iex) do
       executable_path = System.find_executable(executable)
       File.cp!(executable_path, Path.join(bin_path, Path.basename(executable)))
     end
