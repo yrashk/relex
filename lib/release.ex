@@ -9,8 +9,8 @@ defmodule Relex.Release do
 
         def name, do: "my"
         def version, do: "1.0"
-      end
 
+      end
   For more information, please refer to Relex.Release.Template
   """
 
@@ -56,6 +56,8 @@ defmodule Relex.Release do
 
       def write_script!(apps, opts // []), do: write_script!(__MODULE__, apps, opts)
       def bundle!(kind, opts // []), do: bundle!(kind, __MODULE__, opts)
+      def write_start_clean!(opts), do: write_start_clean!(__MODULE__, opts)
+      def make_default_release(name // nil, opts), do: make_default_release(__MODULE__, name, opts)
 
       @doc """
       Assembles a release.
@@ -65,10 +67,17 @@ defmodule Relex.Release do
       * path: path where the repository will be created, by default File.cwd!
       """
       def assemble!(opts // []) do
+        :ets.new(Relex.App, [:public, :named_table, :ordered_set])
         apps = bundle!(:applications, opts)
         write_script!(apps, opts)
         if include_erts?(opts), do: bundle!(:erts, opts)
         if include_elixir?(opts), do: bundle!(:elixir, opts)
+        if include_erts?(opts) and default_release?(opts), do: make_default_release(opts)
+        if include_start_clean?(opts) do
+          write_start_clean!(opts)
+          unless default_release?(opts), do: make_default_release("start_clean", opts)
+        end
+        :ets.delete(Relex.App)
         after_bundle(opts)
       end
 
@@ -185,8 +194,16 @@ defmodule Relex.Release do
       defcallback include_elixir?, do: true
 
       @doc """
+      Specifies whether a start_clean release is included into the release. False by default
+      """
+      defcallback include_start_clean?, do: false
+
+      @doc """
       Specifies whether this release's boot file should be designated as a
       default "start" boot file. True by default.
+
+      If False, and include_start_clean? is True, start_clean will become
+      the default release.
       """
       defcallback default_release?, do: true
 
@@ -282,9 +299,12 @@ defmodule Relex.Release do
   end
 
   def bundle!(:applications, release, options) do
-    path = Path.expand(Path.join([options[:path] || File.cwd!, release.name(options), "lib"]))
-    if :ets.info(Relex.App) == :undefined, do: :ets.new(Relex.App, [:public, :named_table, :ordered_set])
     apps = apps(release, options)
+    bundle!(:applications, apps, release, options)
+  end
+
+  def bundle!(:applications, apps, release, options) do
+    path = Path.expand(Path.join([options[:path] || File.cwd!, release.name(options), "lib"]))
     apps_files = lc app inlist apps do
       src = Path.expand(Relex.App.path(app))
       files = Relex.Files.files(src,
@@ -300,32 +320,59 @@ defmodule Relex.Release do
     apps
   end
 
-  def write_script!(release, apps, options) do
-    path = Path.join([options[:path] || File.cwd!, release.name(options), "releases", release.version(options)])
+  def write_script!({ :release, { name, _ }, _erts, _apps } = resource, path, code_path) do
     File.mkdir_p! path
-    rel_file = Path.join(path, "#{release.name(options)}.rel")
-    File.write rel_file, :io_lib.format("~p.~n",[rel(release, apps, options)])
-    code_path = lc path inlist release.code_path(options), do: to_char_list(path)
-    :systools.make_script(to_char_list(Path.join(path, release.name(options))), [path: code_path, outdir: to_char_list(path)])
-    if release.default_release?(options) and release.include_erts?(options) do
-      lib_path = Path.join([options[:path] || File.cwd!, release.name(options)])
-      boot_file = "#{release.name(options)}.boot"
-      boot = Path.join([path, boot_file])
-      target = Path.join([lib_path, "bin"])
-      File.mkdir_p!(target)
-      File.cp!(boot, Path.join([target, "start.boot"]))
-    end
-    :ets.delete(Relex.App)
+    rel_file = Path.join(path, "#{name}.rel")
+    File.write rel_file, :io_lib.format("~p.~n",[resource])
+    code_path = lc path inlist code_path, do: to_char_list(path)
+    :systools.make_script(to_char_list(Path.join(path, name)), [path: code_path, outdir: to_char_list(path)])
   end
 
-  def rel(release, apps, options) do
-    {:release, {to_char_list(release.name(options)), to_char_list(release.version(options))},
-               {:erts, to_char_list(release.erts_version(options))},
-               (lc app inlist apps do
-                  {Relex.App.name(app), Relex.App.version(app),
-                   Relex.App.type(app),
-                   (lc inc_app inlist Relex.App.included_applications(app), do: Relex.App.name(inc_app))}
-               end)}
+  def write_script!(release, apps, options) do
+    resource = rel(release, apps, options)
+    release_path = release_path(release, options)
+    code_path = release.code_path(options)
+    write_script!(resource, release_path, code_path)
+  end
+
+  def write_start_clean!(release, opts) do
+    apps = bundle!(:applications, apps(Relex.Release.StartClean, opts), release, opts)
+    resource = clean_rel(release, apps, opts)
+    release_path = release_path(release, opts)
+    code_path = release.code_path(opts)
+    write_script!(resource, release_path, code_path)
+  end
+
+  def release_path(release, options) do
+    Path.join([options[:path] || File.cwd!, release.name(options), "releases", release.version(options)])
+  end
+
+  def rel(release, apps, opts) do
+    rel(release.name(opts), release.version(opts), release.erts_version(opts), apps)
+  end
+
+  def clean_rel(release, apps, opts) do
+    rel("start_clean", release.version(opts), release.erts_version(opts), apps)
+  end
+
+  def rel(name, version, erts, apps) do
+    {:release, 
+        {to_char_list(name), to_char_list(version)},
+        {:erts, to_char_list(erts)},
+        (lc app inlist apps do
+          {Relex.App.name(app), Relex.App.version(app), Relex.App.type(app),
+           (lc inc_app inlist Relex.App.included_applications(app), do: Relex.App.name(inc_app))}
+        end)}
+  end
+
+  def make_default_release(release, boot_name, options) do
+    unless boot_name, do: boot_name = release.name(options)
+    lib_path = Path.join([options[:path] || File.cwd!, release.name(options)])
+    boot_file = "#{boot_name}.boot"
+    boot = Path.join([release_path(release, options), boot_file])
+    target = Path.join([lib_path, "bin"])
+    File.mkdir_p!(target)
+    File.cp!(boot, Path.join([target, "start.boot"]))
   end
 
   defp apps(release, options) do

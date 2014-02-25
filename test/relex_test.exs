@@ -7,6 +7,23 @@ defmodule TestRelease do
   def version, do: "1.0"
 end
 
+defmodule TestRelease.StartClean do
+  use Relex.Release
+
+  def name, do: "test_start_clean"
+  def version, do: "1.0"
+  def include_start_clean?, do: true
+end
+
+defmodule TestRelease.StartClean.AsDefault do
+  use Relex.Release
+
+  def name, do: "test_start_clean_default"
+  def version, do: "1.0"
+  def include_start_clean?, do: true
+  def default_release?, do: false
+end
+
 defmodule RelexTest do
   use ExUnit.Case
 
@@ -25,6 +42,14 @@ defmodule RelexTest do
 
   test "assembly of a minimal release" do
     assert TestRelease.assemble!(path: path) == :ok
+  end
+
+  test "assembly of a release including start_clean" do
+    assert TestRelease.StartClean.assemble!(path: path) == :ok
+  end
+
+  test "assembly of a release including start_clean as default" do
+    assert TestRelease.StartClean.AsDefault.assemble!(path: path) == :ok
   end
 
   defp path, do: Path.join(Path.dirname(__FILE__), "tmp")
