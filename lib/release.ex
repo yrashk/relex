@@ -54,10 +54,10 @@ defmodule Relex.Release do
           def name(config), do: config[:release_name]
       """
 
-      def write_script!(apps, opts // []), do: write_script!(__MODULE__, apps, opts)
-      def bundle!(kind, opts // []), do: bundle!(kind, __MODULE__, opts)
+      def write_script!(apps, opts \\ []), do: write_script!(__MODULE__, apps, opts)
+      def bundle!(kind, opts \\ []), do: bundle!(kind, __MODULE__, opts)
       def write_start_clean!(opts), do: write_start_clean!(__MODULE__, opts)
-      def make_default_release(name // nil, opts), do: make_default_release(__MODULE__, name, opts)
+      def make_default_release(name \\ nil, opts), do: make_default_release(__MODULE__, name, opts)
 
       @doc """
       Assembles a release.
@@ -66,7 +66,7 @@ defmodule Relex.Release do
 
       * path: path where the repository will be created, by default File.cwd!
       """
-      def assemble!(opts // []) do
+      def assemble!(opts \\ []) do
         :ets.new(Relex.App, [:public, :named_table, :ordered_set])
         apps = bundle!(:applications, opts)
         write_script!(apps, opts)
