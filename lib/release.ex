@@ -278,7 +278,7 @@ defmodule Relex.Release do
     #! /bin/sh
     readlink_f () {
       cd "$(dirname "$1")" > /dev/null
-      local filename="$(basename "$1")"
+      filename="$(basename "$1")"
       if [ -h "$filename" ]; then
         readlink_f "$(readlink "$filename")"
       else
