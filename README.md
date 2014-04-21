@@ -30,7 +30,7 @@ You can also use Relex with Mix. For this, add the following dependency:
 Then, prepend your mix.exs file with this:
 
 ```elixir
-Code.append_path "deps/relex/ebin"
+Code.append_path "_build/#{Mix.env}/lib/relex/ebin/"
 ```
 
 and then, inside of your project module, define the release:
