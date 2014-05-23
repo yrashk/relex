@@ -91,7 +91,7 @@ defrecord Relex.App, name: nil, version: nil, path: nil, app: nil, type: :perman
 
   defp keys(rec) do
     {:application, _, opts} = app(rec)
-    Keyword.from_enum(opts)
+    Enum.to_list(opts)
   end
 
 end
